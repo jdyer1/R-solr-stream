@@ -1,0 +1,11 @@
+Package: rSolrStream
+Type: Package
+Title: An interface between R and Apache Solr's Streaming Expressions
+Version: 0.0
+Date: 2017-06-01
+Depends: rJava, data.table
+Suggests: testthat
+Author: James Dyer
+Maintainer: James Dyer <jdyer@apache.org>
+Description: This package consists of an interface between R and Apache Solr's Streaming Expressions.
+License: ASL 2.0
