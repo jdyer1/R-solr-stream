@@ -31,21 +31,21 @@ public class MockSolrClient extends SolrClient {
         d1.put("string", "PORK");
         d1.put("string_multi", new String[] { "hope", "life", "peace" });
         d1.put("double", Math.PI);
-        d1.put("boolean_multi", new boolean[] { true, false });
+        d1.put("boolean_multi", new boolean[] { true, true });
         d1.put("long", -12345678900l);
-        d1.put("double_multi", new double[] { 1.2, 3.4, -5.6, Double.NaN, Double.POSITIVE_INFINITY });
+        d1.put("double_multi", new double[] { 1.2, 3.4, -1.2, -3.4 });
         d1.put("boolean", true);
-        d1.put("long_multi", new long[] { 1, 2, 3, Long.MIN_VALUE });
+        d1.put("long_multi", new long[] { 1, 2, 3, 4, 5, 6 });
 
         d2 = new LinkedHashMap<>();
         d2.put("string", "print_corn <- function { print(\"CORN\"); }");
         d2.put("string_multi", new String[] { "death", "destruction", "strife" });
-        d2.put("double", 3.141);
+        d2.put("double", Double.NaN);
         d2.put("boolean_multi", new boolean[] { true, false });
         d2.put("long", 9876543210l);
         d2.put("double_multi", new double[] { Math.E, Double.MIN_VALUE });
         d2.put("boolean", true);
-        d2.put("long_multi", new long[] { 77777, 88888 });
+        d2.put("long_multi", new long[] { 10000000000l, 20000000000l, 30000000000l });
 
         Map<String, Object> eof = new LinkedHashMap<>();
         eof.put("EOF", true);

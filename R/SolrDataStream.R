@@ -1,5 +1,6 @@
 solr_stream <- function(solr_client, solr_collection, streaming_expression, col_names=NULL, col_transform_functions=NULL) {
-	iterator <- .jcall("rsolrstream/RStreamingExpressions", "Lrsolrstream/RStreamingExpressionIterator;", "executeStreamingExpression", solr_client, solr_collection, streaming_expression)
+	iterator <- .jcall("rsolrstream/RStreamingExpressions", "Lrsolrstream/RStreamingExpressionIterator;", 
+			"executeStreamingExpression", solr_client, solr_collection, streaming_expression, col_names)
 	if(is.null(col_names)) {
 		col_names <- .jcall(iterator, "[Ljava/lang/String;", "columnNames")	
 	}
@@ -75,6 +76,9 @@ default_long_transform <- function(value) {
 }
 default_double_transform <- function(value) {
 	median(value)
+}
+first_value_transform <- function(value) {
+	value[[1]]
 }
 
 #Taken directly from: http://stackoverflow.com/questions/2436688/append-an-object-to-a-list-in-r-in-amortized-constant-time-o1/32870310#32870310

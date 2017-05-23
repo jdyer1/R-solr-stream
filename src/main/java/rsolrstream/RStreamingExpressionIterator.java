@@ -30,10 +30,17 @@ public class RStreamingExpressionIterator implements Iterator<RStreamingExpressi
                         BOOLEAN, STRING, DOUBLE, LONG
     };
 
-    // TODO: need an alternate here with columns passed-in
+    RStreamingExpressionIterator(Reader r, String[] columnNames) {
+        tsp = new JSONTupleStream(r);
+        this.columnNames = columnNames;
+        populateColumnTypesAndIndexes();
+        log.debug("Start ts: {}", System.currentTimeMillis());
+    }
+
     RStreamingExpressionIterator(Reader r) {
         tsp = new JSONTupleStream(r);
-        populateColumns();
+        populateColumnNames();
+        populateColumnTypesAndIndexes();
         log.debug("Start ts: {}", System.currentTimeMillis());
     }
 
@@ -128,7 +135,22 @@ public class RStreamingExpressionIterator implements Iterator<RStreamingExpressi
 
         for (int i = 0; i < columnNames.length; i++) {
             Object o = m.get(columnNames[i]);
-            if (o instanceof List) {
+            if (o == null) {
+                switch (columnTypes[i]) {
+                    case BOOLEAN:
+                        b[bp++] = new boolean[] { false };
+                        break;
+                    case LONG:
+                        l[lp++] = new long[] { 0 };
+                        break;
+                    case DOUBLE:
+                        d[dp++] = new double[] { Double.NaN };
+                        break;
+                    case STRING:
+                        s[sp++] = new String[] { "" };
+                        break;
+                }
+            } else if (o instanceof List) {
                 List<?> list = ((List<?>) o);
                 switch (columnTypes[i]) {
                     case BOOLEAN:
@@ -169,37 +191,39 @@ public class RStreamingExpressionIterator implements Iterator<RStreamingExpressi
         return new RStreamingExpressionRow(s, b, d, l);
     }
 
-    private void populateColumns() {
+    private void populateColumnTypesAndIndexes() {
         if (!hasNext()) {
-            columnNames = new String[0];
             columnTypes = new TYPES[0];
             booleanIndexes = new int[0];
             longIndexes = new int[0];
             doubleIndexes = new int[0];
             stringIndexes = new int[0];
         } else {
-            columnNames = new String[next.size()];
-            columnTypes = new TYPES[next.size()];
+            columnTypes = new TYPES[columnNames.length];
             List<Integer> bil = new ArrayList<>(columnNames.length);
             List<Integer> lil = new ArrayList<>(columnNames.length);
             List<Integer> dil = new ArrayList<>(columnNames.length);
             List<Integer> sil = new ArrayList<>(columnNames.length);
             int i = 0;
-            for (Map.Entry<String, Object> entry : next.entrySet()) {
-                columnNames[i] = entry.getKey();
-                Object val = entry.getValue();
-                if (val instanceof List) {
-                    val = ((List<?>) val).get(0);
-                }
-                if (val instanceof Boolean) {
-                    columnTypes[i] = TYPES.BOOLEAN;
-                    bil.add(i);
-                } else if (val instanceof Double) {
-                    columnTypes[i] = TYPES.DOUBLE;
-                    dil.add(i);
-                } else if (val instanceof Long) {
-                    columnTypes[i] = TYPES.LONG;
-                    lil.add(i);
+            for (String columnName : columnNames) {
+                Object val = next.get(columnName);
+                if (val != null) {
+                    if (val instanceof List) {
+                        val = ((List<?>) val).get(0);
+                    }
+                    if (val instanceof Boolean) {
+                        columnTypes[i] = TYPES.BOOLEAN;
+                        bil.add(i);
+                    } else if (val instanceof Double) {
+                        columnTypes[i] = TYPES.DOUBLE;
+                        dil.add(i);
+                    } else if (val instanceof Long) {
+                        columnTypes[i] = TYPES.LONG;
+                        lil.add(i);
+                    } else {
+                        columnTypes[i] = TYPES.STRING;
+                        sil.add(i);
+                    }
                 } else {
                     columnTypes[i] = TYPES.STRING;
                     sil.add(i);
@@ -210,6 +234,19 @@ public class RStreamingExpressionIterator implements Iterator<RStreamingExpressi
             longIndexes = unboxIntegerList(lil);
             doubleIndexes = unboxIntegerList(dil);
             stringIndexes = unboxIntegerList(sil);
+        }
+    }
+
+    private void populateColumnNames() {
+        if (!hasNext()) {
+            columnNames = new String[0];
+        } else {
+            columnNames = new String[next.size()];
+            int i = 0;
+            for (Map.Entry<String, Object> entry : next.entrySet()) {
+                columnNames[i] = entry.getKey();
+                i++;
+            }
         }
     }
 

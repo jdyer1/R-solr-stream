@@ -25,6 +25,11 @@ public class RStreamingExpressions {
 
     public static RStreamingExpressionIterator executeStreamingExpression(SolrClient sc, String collection,
         String expression) throws IOException, SolrServerException {
+        return executeStreamingExpression(sc, collection, expression, null);
+    }
+
+    public static RStreamingExpressionIterator executeStreamingExpression(SolrClient sc, String collection,
+        String expression, String[] columnNames) throws IOException, SolrServerException {
         if (!checkResponseWriter(sc)) {
             log.error("The SolrClient's Response Writer should be: " + InputStreamResponseParser.class.getName());
         }
@@ -33,9 +38,12 @@ public class RStreamingExpressions {
         NamedList<Object> nl = sc.request(sr, collection);
         InputStream stream = (InputStream) nl.get("stream");
         InputStreamReader reader = new InputStreamReader(stream, "UTF-8");
-        return new RStreamingExpressionIterator(reader);
+        if (columnNames == null || columnNames.length == 0) {
+            return new RStreamingExpressionIterator(reader);
+        }
+        return new RStreamingExpressionIterator(reader, columnNames);
     }
-    
+
     private static boolean checkResponseWriter(SolrClient sc) {
         if (sc instanceof HttpSolrClient && !(((HttpSolrClient) sc).getParser() instanceof InputStreamResponseParser)) {
             return false;
