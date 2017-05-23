@@ -7,6 +7,9 @@ solr_stream <- function(solr_client, solr_collection, streaming_expression, col_
 	if(is.null(col_transform_functions)) {
 		col_transform_functions <- array(dim=length(col_names))
 	}
+	if(length(col_names) != length(col_transform_functions)) {
+		stop("'col_names' and 'col_transform_functions' must be the same length.")
+	}
 	boolean_indexes <- .jcall(iterator, "[I", "booleanIndexes")
 	long_indexes <- .jcall(iterator, "[I", "longIndexes")
 	double_indexes <- .jcall(iterator, "[I", "doubleIndexes")
@@ -21,7 +24,7 @@ solr_stream <- function(solr_client, solr_collection, streaming_expression, col_
 		i <- 0
 		for(j in boolean_indexes) {
 			boolean_values <- .jcall(data_row, "[Z", "getBooleans", as.integer(i))
-			if(is.na(col_transform_functions[[j+1]])) {
+			if(class(col_transform_functions[[j+1]])!="function") {
 				values[[(j+1)]] <- default_boolean_transform(boolean_values) 
 			} else {
 				values[[(j+1)]] <- col_transform_functions[[j+1]](boolean_values)
@@ -31,7 +34,7 @@ solr_stream <- function(solr_client, solr_collection, streaming_expression, col_
 		i <- 0
 		for(j in long_indexes) {
 			long_values <- .jcall(data_row, "[J", "getLongs", as.integer(i))
-			if(is.na(col_transform_functions[[j+1]])) {
+			if(class(col_transform_functions[[j+1]])!="function") {
 				values[[(j+1)]] <- default_long_transform(long_values) 
 			} else {
 				values[[(j+1)]] <- col_transform_functions[[j+1]](long_values)
@@ -41,7 +44,7 @@ solr_stream <- function(solr_client, solr_collection, streaming_expression, col_
 		i <- 0
 		for(j in double_indexes) {
 			double_values <- .jcall(data_row, "[D", "getDoubles", as.integer(i))
-			if(is.na(col_transform_functions[[j+1]])) {
+			if(class(col_transform_functions[[j+1]])!="function") {
 				values[[(j+1)]] <- default_double_transform(double_values) 
 			} else {
 				values[[(j+1)]] <- col_transform_functions[[j+1]](double_values)
@@ -51,7 +54,7 @@ solr_stream <- function(solr_client, solr_collection, streaming_expression, col_
 		i <- 0
 		for(j in string_indexes) {
 			string_values <- .jcall(data_row, "[Ljava/lang/String;", "getStrings", as.integer(i))
-			if(is.na(col_transform_functions[[j+1]])) {
+			if(class(col_transform_functions[[j+1]])!="function") {
 				values[[(j+1)]] <- default_string_transform(string_values) 
 			} else {
 				values[[(j+1)]] <- col_transform_functions[[j+1]](string_values)

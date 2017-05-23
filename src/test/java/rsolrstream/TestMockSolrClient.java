@@ -30,7 +30,7 @@ public class TestMockSolrClient {
 
     private void runTest(String[] columns, String[] invalidColumns) throws Exception {
         MockSolrClient msc = new MockSolrClient();
-        String mockCollection = "excecuting_collection_name";
+        String mockCollection = "executing_collection_name";
         String mockExpression = "expression(data_collection_name, la-de-la-la)";
         RStreamingExpressionIterator iter =
             RStreamingExpressions.executeStreamingExpression(msc, mockCollection, mockExpression, columns);
