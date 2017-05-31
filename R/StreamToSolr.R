@@ -1,4 +1,5 @@
-to_solr_stream <- function(r_obj, col_names=NULL, rowname_col=NULL, sort_column=NULL, sort_expression=NULL, timeoutMillis=1000) {
+to_solr_stream <- function(r_obj, cloud_solr_client, solr_collection, col_names=NULL, rowname_col=NULL, sort_column=NULL, 
+		sort_expression=NULL, timeout_in_milliseconds=1000, outer_expression_generator_function=update_solr_collection) {
 	if(is.null(col_names)) {
 		col_names <- colnames(r_obj)
 	}	
@@ -17,21 +18,33 @@ to_solr_stream <- function(r_obj, col_names=NULL, rowname_col=NULL, sort_column=
 		col_names <- c(col_names, sort_column)
 	}
 	
+	if(!.jinstanceof(cloud_solr_client, "org/apache/solr/client/solrj/impl/CloudSolrClient")) {
+		stop("Must create a Cloud Solr Client from zookeeper hosts")
+	}
+	cloud_solr_client_cast <- .jcast(cloud_solr_client, "org/apache/solr/client/solrj/impl/CloudSolrClient")
+	zk_host <- .jcall(cloud_solr_client_cast, "Ljava/lang/String;", "getZkHost")	
+	
+	dim_length <- length(dim(r_obj))
+	if(dim_length>2) {
+		stop("r_obj must be a 1- or 2-dimensional object such as a vector or data.frame")
+	}
+	
 	queue <- .jnew("java/util/concurrent/SynchronousQueue")
 	blocking_queue <- .jcast(queue, "java/util/concurrent/BlockingQueue")
-	queueName <- paste("RStream", as.numeric(Sys.time()), sep="-")
-	.jcall("rsolrstream/RStream", "V", "registerQueue", queueName, blocking_queue)
+	queue_name <- paste("RStream", as.numeric(Sys.time()), sep="-")
+	.jcall("rsolrstream/RStream", "V", "registerQueue", queue_name, blocking_queue)
 	
 	col_names_comma_delimited <- paste(col_names, collapse=",")	
-	expression <- paste("R(sort=\"", sort_expression, "\", readTimeoutMillis=", timeoutMillis, ", columnNames=\"", col_names_comma_delimited, "\", queueName=\"", queueName, "\")", sep="")
+	expression <- outer_expression_generator_function(zk_host, solr_collection, paste("R(sort=\"", sort_expression, "\", readTimeoutMillis=", 
+					timeout_in_milliseconds, ", columnNames=\"", col_names_comma_delimited, "\", queueName=\"", 
+					queue_name, "\")", sep=""))	
 	bse <- .jnew("rsolrstream/BackgroundStreamingExpression", expression)
 	.jcall(bse, "V", "submit")
-	
-	dim_length <- length(dim(r_obj))	
+			
 	if(dim_length<2) {		
 		col_types <- rep(class(r_obj), length(r_obj))
 		to_solr_row(r_obj, col_types, queue, sort_column_counter)
-	} else if(dim_length==2) {
+	} else {
 		col_types <- sapply(r_obj, class)
 		if(is.null(rowname_col)) {
 			apply(r_obj, 1, to_solr_row, col_types, queue, sort_column_counter)
@@ -41,14 +54,15 @@ to_solr_stream <- function(r_obj, col_names=NULL, rowname_col=NULL, sort_column=
 				to_solr_row(cbind(rownames(r_obj)[i], r_obj[i,]), col_types, queue, sort_column_counter)
 			}
 		}
-	} else {
-		to_solr_row(list(), list(), queue, NULL)
-		stop("r_obj must be a 1- or 2-dimensional object such as a vector or data.frame")
-	}
+	} 
 	
 	#signals EOF
 	to_solr_row(list(), list(), queue, NULL)
 	NULL
+}
+
+update_solr_collection <- function(zk_host, solr_collection, inner_expression) {
+	paste("update(", solr_collection, ", batchSize=10, ", inner_expression, ")", sep="")
 }
 
 to_solr_row <- function(row, col_types, queue, sort_column_counter) {

@@ -10,13 +10,21 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.impl.CloudSolrClient;
+import org.apache.solr.client.solrj.impl.InputStreamResponseParser;
 import org.apache.solr.common.util.NamedList;
 import org.noggit.JSONUtil;
 
-public class MockSolrClient extends SolrClient {
+public class MockSolrClient extends CloudSolrClient {
+   
+    @SuppressWarnings("deprecation")
+    public MockSolrClient() {
+        super(""); 
+        setParser(new InputStreamResponseParser("json"));
+    }
+
     private static final long serialVersionUID = 1L;
     private static final Map<String, Object> d1;
     private static final Map<String, Object> d2;

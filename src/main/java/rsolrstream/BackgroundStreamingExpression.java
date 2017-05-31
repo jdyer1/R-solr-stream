@@ -6,7 +6,10 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.solr.client.solrj.impl.CloudSolrClient;
+import org.apache.solr.client.solrj.io.SolrClientCache;
 import org.apache.solr.client.solrj.io.Tuple;
+import org.apache.solr.client.solrj.io.stream.CloudSolrStream;
 import org.apache.solr.client.solrj.io.stream.StreamContext;
 import org.apache.solr.client.solrj.io.stream.TupleStream;
 import org.apache.solr.client.solrj.io.stream.expr.StreamFactory;
@@ -15,21 +18,25 @@ import org.slf4j.LoggerFactory;
 
 public class BackgroundStreamingExpression implements Runnable {
     private static final Logger log = LoggerFactory.getLogger(BackgroundStreamingExpression.class);
-    
+
     private static final ThreadPoolExecutor tpe = new ThreadPoolExecutor(1, Runtime.getRuntime().availableProcessors(),
         60, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10));
 
-    private static final StreamFactory sf = new StreamFactory().withFunctionName(RStream.FUNCTION_NAME, RStream.class);
+    private static final StreamFactory sf = new StreamFactory().withFunctionName(RStream.FUNCTION_NAME, RStream.class)
+        .withFunctionName("search", CloudSolrStream.class);
+
     private final TupleStream stream;
     private final StreamContext context;
 
-    public BackgroundStreamingExpression(String expression) throws IOException {
+    public BackgroundStreamingExpression(CloudSolrClient csc, String expression) throws IOException {
         log.debug("Creating BackgroundStreamingExpression for: {}", expression);
         stream = sf.constructStream(expression);
         context = new StreamContext();
-        stream.setStreamContext(context);   
-    } 
-    
+        SolrClientCache scCache = new RSolrClientCache(csc);
+        context.setSolrClientCache(scCache);
+        stream.setStreamContext(context);
+    }
+
     public void submit() {
         tpe.execute(this);
     }
@@ -48,13 +55,13 @@ public class BackgroundStreamingExpression implements Runnable {
                 }
                 i++;
             }
-        } catch(IOException e) {
+        } catch (IOException e) {
             log.error("Problem streaming: ", e);
         } finally {
             try {
                 stream.close();
-            } catch(IOException e1) {
-                log.warn("Problem closing stream: ", e1); 
+            } catch (IOException e1) {
+                log.warn("Problem closing stream: ", e1);
             }
         }
     }

@@ -11,6 +11,7 @@ An interface between R and Apache Solr's Streaming Expressions
 * R installation: `install.packages("/path/to/R-solr-stream", repos=NULL)`
 
 ## Running the R unit tests
+* `setwd("/path/to/R-solr-stream")`
 * `devtools::test()`
 
 ## Use
