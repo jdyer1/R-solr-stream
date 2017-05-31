@@ -25,15 +25,19 @@ import org.apache.solr.client.solrj.io.stream.expr.StreamExpressionParameter;
 import org.apache.solr.client.solrj.io.stream.expr.StreamExpressionValue;
 import org.apache.solr.client.solrj.io.stream.expr.StreamFactory;
 import org.apache.solr.client.solrj.io.stream.expr.Explanation.ExpressionType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RStream extends TupleStream implements Expressible {
     private static final long serialVersionUID = 1L;
+    private static final Logger log = LoggerFactory.getLogger(RStream.class);
 
     public static final String FUNCTION_NAME = "R";
     private static ConcurrentHashMap<String, BlockingQueue<RInputRow>> queues = new ConcurrentHashMap<>();
     private final StreamExpression expression;
     private final StreamComparator userDefinedSort;
     private final BlockingQueue<RInputRow> queue;
+    private final String queueName;
     private final String[] columnNames;
     private final int readTimeoutMillis;
     
@@ -52,7 +56,7 @@ public class RStream extends TupleStream implements Expressible {
         try {
             StreamExpressionNamedParameter senp = factory.getNamedOperand(expression, "queueName");
             StreamExpressionValue sev = (StreamExpressionValue) senp.getParameter();
-            String queueName = sev.getValue();
+            queueName = sev.getValue();
             queue = queues.get(queueName);
         } catch (Exception e) {
             throw new IllegalArgumentException("Missing or invalid 'queueName'");
@@ -79,6 +83,7 @@ public class RStream extends TupleStream implements Expressible {
         if(queues.putIfAbsent(queueName, queue) != null) {
             throw new IllegalArgumentException("The queue " + queueName +  " already exists");
         }
+        log.debug("Registered queue: " + queueName);
     }
 
     @Override
@@ -104,7 +109,8 @@ public class RStream extends TupleStream implements Expressible {
 
     @Override
     public void close() throws IOException {
-        // no-op
+        queues.remove(queueName);
+        log.debug("De-registered queue: " + queueName);
     }
 
     @Override
