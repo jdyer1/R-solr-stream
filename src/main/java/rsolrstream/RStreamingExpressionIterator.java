@@ -15,7 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class RStreamingExpressionIterator implements Iterator<RStreamingExpressionRow>, Closeable {
-    private static final Logger log = LoggerFactory.getLogger(RStreamingExpressions.class);
+    private static final Logger log = LoggerFactory.getLogger(RStreamingExpressionIterator.class);
     private final TupleStreamParser tsp;
     private boolean closed = false;
     private Map<String, Object> next = null;

@@ -50,15 +50,11 @@ public class BackgroundStreamingExpression implements Runnable {
     public void run() {
         try {
             stream.open();
-            int i = 0;
             for (Tuple t = stream.read(); !t.EOF; t = stream.read()) {
-                int j = 0;
                 for (Object o : t.fields.entrySet()) {
                     Map.Entry<?, ?> entry = (Map.Entry<?, ?>) o;
-                    log.debug(i + " | " + j + " | " + entry.getKey() + " | " + entry.getValue());
-                    j++;
+                    log.debug("Stream Results: {} / {}", entry.getKey(), entry.getValue());
                 }
-                i++;
             }
         } catch (IOException e) {
             log.error("Problem streaming: ", e);
