@@ -38,34 +38,34 @@ to_solr_stream <- function(r_obj, cloud_solr_client, solr_collection, col_names=
 	expression <- outer_expression_generator_function(zk_host, solr_collection, paste("R(sort=\"", sort_expression, "\", readTimeoutMillis=", 
 					timeout_in_milliseconds, ", columnNames=\"", col_names_comma_delimited, "\", queueName=\"", 
 					queue_name, "\")", sep=""))	
-	bse <- .jnew("rsolrstream/BackgroundStreamingExpression", expression)
+	bse <- .jnew("rsolrstream/BackgroundStreamingExpression", cloud_solr_client_cast, expression)
 	.jcall(bse, "V", "submit")
 			
 	if(dim_length<2) {		
 		col_types <- rep(class(r_obj), length(r_obj))
-		to_solr_row(r_obj, col_types, queue, sort_column_counter)
+		to_solr_row(r_obj, col_types, queue, timeout_in_milliseconds, sort_column_counter)
 	} else {
 		col_types <- sapply(r_obj, class)
 		if(is.null(rowname_col)) {
-			apply(r_obj, 1, to_solr_row, col_types, queue, sort_column_counter)
+			apply(r_obj, 1, to_solr_row, col_types, queue, timeout_in_milliseconds, sort_column_counter)
 		} else {
 			col_types <- c("header", col_types)
 			for(i in 1:dim(r_obj)[1]) {
-				to_solr_row(cbind(rownames(r_obj)[i], r_obj[i,]), col_types, queue, sort_column_counter)
+				to_solr_row(cbind(rownames(r_obj)[i], r_obj[i,]), col_types, queue, timeout_in_milliseconds, sort_column_counter)
 			}
 		}
 	} 
 	
 	#signals EOF
-	to_solr_row(list(), list(), queue, NULL)
+	to_solr_row(list(), list(), queue, timeout_in_milliseconds, NULL)
 	NULL
 }
 
 update_solr_collection <- function(zk_host, solr_collection, inner_expression) {
-	paste("update(", solr_collection, ", batchSize=10, ", inner_expression, ")", sep="")
+	paste("update(", solr_collection, ", zkHost=", zk_host, ", batchSize=10, ", inner_expression, ")", sep="")
 }
 
-to_solr_row <- function(row, col_types, queue, sort_column_counter) {
+to_solr_row <- function(row, col_types, queue, timeout_in_milliseconds, sort_column_counter) {
 	l <- length(row)
 	if(!is.null(sort_column_counter)) {
 		l <- l + 1
@@ -90,7 +90,11 @@ to_solr_row <- function(row, col_types, queue, sort_column_counter) {
 		.jcall(r_input_row, "V", "setLong", as.integer(i-1), .jlong(sort_column_counter$value()))	
 		sort_column_counter$increment()
 	}
-	.jcall(queue, "V", "put", .jcast(r_input_row, "java/lang/Object"))
+	ms <- .jcast(.jfield("java/util/concurrent/TimeUnit", , "MILLISECONDS"), "java/util/concurrent/TimeUnit")
+	resp <- .jcall(queue, "Z", "offer", .jcast(r_input_row, "java/lang/Object"), .jlong(timeout_in_milliseconds), ms)
+	if(!resp) {
+		stop("timeout occurred while attempting to stream to solr.")
+	}
 }
 
 # based on: https://www.r-bloggers.com/a-little-r-counter/

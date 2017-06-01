@@ -9,9 +9,9 @@ import java.util.concurrent.TimeUnit;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.io.SolrClientCache;
 import org.apache.solr.client.solrj.io.Tuple;
-import org.apache.solr.client.solrj.io.stream.CloudSolrStream;
 import org.apache.solr.client.solrj.io.stream.StreamContext;
 import org.apache.solr.client.solrj.io.stream.TupleStream;
+import org.apache.solr.client.solrj.io.stream.UpdateStream;
 import org.apache.solr.client.solrj.io.stream.expr.StreamFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,18 +23,23 @@ public class BackgroundStreamingExpression implements Runnable {
         60, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10));
 
     private static final StreamFactory sf = new StreamFactory().withFunctionName(RStream.FUNCTION_NAME, RStream.class)
-        .withFunctionName("search", CloudSolrStream.class);
+        .withFunctionName("update", UpdateStream.class);
 
     private final TupleStream stream;
     private final StreamContext context;
 
     public BackgroundStreamingExpression(CloudSolrClient csc, String expression) throws IOException {
         log.debug("Creating BackgroundStreamingExpression for: {}", expression);
-        stream = sf.constructStream(expression);
-        context = new StreamContext();
-        SolrClientCache scCache = new RSolrClientCache(csc);
-        context.setSolrClientCache(scCache);
-        stream.setStreamContext(context);
+        try {
+            stream = sf.constructStream(expression);
+            context = new StreamContext();
+            SolrClientCache scCache = new RSolrClientCache(csc);
+            context.setSolrClientCache(scCache);
+            stream.setStreamContext(context);
+        } catch (IOException e) {
+            log.error("Could not create BackgroundStreamingExpression", e);
+            throw e;
+        }
     }
 
     public void submit() {
